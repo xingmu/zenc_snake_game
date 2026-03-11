@@ -53,3 +53,35 @@ dkms.conf
 
 # debug information files
 *.dwo
+# 敏感文件 - 安全第一！
+*.token
+*.secret
+*.key
+*.pem
+*.crt
+*.env
+.env*
+config.local.*
+secrets.*
+credentials.*
+
+# 备份文件
+*.bak
+*.backup
+*.old
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*~
+
+# 日志文件（生产环境）
+*.log
+logs/
+
+# IDE和编辑器文件
+.vscode/
+.idea/
+*.swp
+*~
