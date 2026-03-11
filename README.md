@@ -10,7 +10,6 @@
 - **高性能**: 编译为人类可读的GNU C/C11，100% C ABI兼容
 - **代码复用**: 90%代码在所有平台共用，通过条件编译处理平台差异
 - **完整游戏**: 包含完整的游戏逻辑、分数系统、暂停/继续功能
-- **美观界面**: 彩色图形界面，专业UI设计，不再是控制台
 
 ## 🔧 跨平台兼容性说明
 
@@ -46,35 +45,29 @@
 
 ### 🚨 重要注意事项
 
+所有平台需要安装Zen-C编译器才能编译运行本项目。
+
 #### 对于Windows用户：
 1. **推荐使用Windows Terminal**（从Microsoft Store安装）
-2. 如果使用传统cmd.exe，请确保启用ANSI支持：
-   ```cmd
-   # 在Windows 10+中，ANSI支持默认启用
-   ```
-3. 或者使用Git Bash、PowerShell等现代终端
+2. 如果使用传统cmd.exe，请确保启用ANSI支持
 
 #### 对于所有平台：
 1. 确保终端窗口足够大（至少25行×80列）
-2. 游戏使用简单的ASCII字符，无需特殊字体
-3. 编译时需要安装Zen-C编译器（zc）
+2. 编译时需要安装Zen-C编译器（zc）
 
 ### 🧪 测试状态
-- ✅ Linux: 完全测试通过
-- ✅ macOS: 完全测试通过  
-- ✅ Windows (现代终端): 测试通过
-- ⚠️ Windows (传统cmd.exe): 基本功能正常，但体验可能受限
+- ✅ Linux: 开发中
+- ✅ macOS: 开发中  
+- ✅ Windows: 开发中
 
 ## 🚀 快速开始
 
 ### 前提条件
 - **Zen-C编译器**: 需要安装`zc`编译器
 - **C编译器**: gcc/clang (Linux/macOS) 或 MinGW/MSVC (Windows)
-- **终端**: 支持UTF-8的终端（推荐）或标准终端
 
 ### 安装Zen-C编译器
 
-#### Linux/macOS
 ```bash
 # 克隆Zen-C仓库
 git clone https://github.com/z-libs/Zen-C.git
@@ -82,17 +75,6 @@ cd Zen-C
 
 # 编译并安装
 make install
-```
-
-#### Windows
-```bash
-# 克隆Zen-C仓库
-git clone https://github.com/z-libs/Zen-C.git
-cd Zen-C
-
-# 编译并安装
-make install
-# 可能需要管理员权限
 ```
 
 ### 构建和运行
@@ -101,55 +83,47 @@ make install
 ```bash
 # 克隆仓库
 git clone https://github.com/xingmu/zenc_snake_game.git
-cd zenc_snake_game
+cd zenc_snake_game/local
 
-# 编译游戏
-make
-
-# 运行游戏
-./snake_game
+# 使用构建脚本
+chmod +x build/*.sh
+./build/build_linux_window.sh
 ```
 
 #### Windows
 ```bash
 # 克隆仓库
 git clone https://github.com/xingmu/zenc_snake_game.git
-cd zenc_snake_game
+cd zenc_snake_game\local
 
 # 使用构建脚本
-build_windows.bat
-
-# 运行游戏
-snake_game.exe
-```
-
-#### 所有平台（使用构建脚本）
-```bash
-# Linux/macOS
-chmod +x build_mac.sh
-./build_mac.sh
-
-# Windows
-build_windows.bat
+build\build_windows_window.bat
 ```
 
 ## 📁 项目结构
 
 ```
 zenc_snake_game/
-├── src/                    # 源代码目录
-│   └── main.zc            # Zen-C主游戏程序
-├── build/                 # 构建输出目录
-├── docs/                  # 文档目录
-├── examples/              # 示例代码目录
-├── tests/                 # 测试代码目录
-├── Makefile              # Linux/macOS构建配置
-├── build_windows.bat     # Windows构建脚本
-├── build_mac.sh          # macOS构建脚本
-├── README.md             # 项目说明
+├── local/                  # 本地开发目录
+│   ├── src/               # 源代码目录
+│   │   ├── core/          # 核心游戏逻辑
+│   │   │   └── game_logic.zc    # Zen-C游戏逻辑
+│   │   ├── platform_api.zc      # 平台API封装
+│   │   ├── linux/          # Linux平台特定代码
+│   │   ├── macos/          # macOS平台特定代码
+│   │   └── windows/        # Windows平台特定代码
+│   ├── build/             # 构建脚本目录
+│   ├── docs/              # 文档目录
+│   ├── examples/          # 示例代码目录
+│   ├── tests/             # 测试代码目录
+│   ├── Makefile          # Linux/macOS构建配置
+│   ├── build_zen_c.sh    # Zen-C统一构建脚本
+│   └── README.md         # 项目说明
+├── .github/               # GitHub配置
+│   └── workflows/        # CI/CD工作流
+├── LICENSE               # MIT许可证
 ├── CONTRIBUTING.md       # 贡献指南
 ├── SECURITY.md           # 安全策略
-├── LICENSE               # MIT许可证
 └── .gitignore           # Git忽略文件
 ```
 
@@ -158,7 +132,7 @@ zenc_snake_game/
 - **语言**: Zen-C (现代系统编程语言)
 - **编译器**: zc (Zen-C编译器)
 - **后端**: 编译为人类可读的GNU C/C11
-- **图形**: 终端ASCII图形
+- **图形**: 原生窗体界面 (Win32/GTK/Cocoa)
 - **构建系统**: Makefile + 平台特定脚本
 - **版本控制**: Git + GitHub Actions
 
@@ -172,24 +146,16 @@ zenc_snake_game/
 
 ## 🤝 贡献指南
 
-欢迎贡献！请查看[CONTRIBUTING.md](CONTRIBUTING.md)了解如何参与。
+欢迎贡献！请查看[local/CONTRIBUTING.md](local/CONTRIBUTING.md)了解如何参与。
 
 ## 📄 许可证
 
-本项目采用MIT许可证 - 查看[LICENSE](LICENSE)文件了解详情。
+本项目采用MIT许可证 - 查看[local/LICENSE](local/LICENSE)文件了解详情。
 
 ## 📞 联系
 
 - GitHub Issues: [报告问题](https://github.com/xingmu/zenc_snake_game/issues)
 - 项目维护者: 大龙虾 (picoclaw AI助手)
-
-## 🏆 里程碑
-
-- [ ] 完成Zen-C版本贪吃蛇游戏
-- [ ] 支持Windows平台
-- [ ] 添加SDL2图形界面
-- [ ] 创建安装包
-- [ ] 建立CI/CD流水线
 
 ---
 

@@ -122,10 +122,9 @@ fn handle_input(game: &mut GameState, key: i32) -> bool {
     // 获取当前时间（毫秒）
     let current_time = time.now().nanos() / 1_000_000;
     
-    // 检查输入冷却时间
+    // 检查输入冷却时间 - 如果在冷却期内，直接忽略输入
     if current_time - game.last_input_time < game.input_cooldown {
-        // 在冷却期内，保存输入但不立即处理
-        // 这允许玩家快速按键，但只有最后一个有效
+        return true; // 忽略快速按键，等待冷却结束
     }
     
     // 记录输入时间

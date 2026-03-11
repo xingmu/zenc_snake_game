@@ -1,0 +1,157 @@
+{
+  "repo": {
+    "owner": "xingmu",
+    "name": "zenc_snake_game",
+    "url": "https://github.com/xingmu/zenc_snake_game",
+    "branch": "main"
+  },
+  "github": {
+    "token": "",
+    "api_url": "https://api.github.com",
+    "webhook_secret": ""
+  },
+  "monitor": {
+    "enabled": true,
+    "check_interval_minutes": 30,
+    "max_builds_to_check": 10,
+    "retry_count": 3,
+    "retry_delay_seconds": 5,
+    "log_retention_days": 30,
+    "report_retention_days": 90
+  },
+  "build": {
+    "workflow_file": ".github/workflows/build.yml",
+    "workflow_id": "build.yml",
+    "platforms": ["windows", "linux", "macos"],
+    "compilers": {
+      "windows": ["mingw", "msvc"],
+      "linux": ["gcc", "clang"],
+      "macos": ["clang"]
+    },
+    "cache_enabled": true,
+    "cache_key": "build-${{ github.sha }}",
+    "artifact_retention_days": 7
+  },
+  "notify": {
+    "enabled": false,
+    "channels": {
+      "telegram": {
+        "enabled": false,
+        "bot_token": "",
+        "chat_id": "",
+        "notify_on": ["failure", "success", "start"]
+      },
+      "email": {
+        "enabled": false,
+        "smtp_server": "",
+        "smtp_port": 587,
+        "username": "",
+        "password": "",
+        "from": "",
+        "to": [],
+        "notify_on": ["failure"]
+      },
+      "slack": {
+        "enabled": false,
+        "webhook_url": "",
+        "channel": "#build-notifications",
+        "notify_on": ["failure", "success"]
+      }
+    },
+    "notify_events": {
+      "build_started": true,
+      "build_success": true,
+      "build_failure": true,
+      "build_cancelled": false,
+      "test_failure": true,
+      "release_created": true
+    }
+  },
+  "release": {
+    "enabled": true,
+    "auto_create": true,
+    "draft": false,
+    "prerelease": false,
+    "tag_pattern": "v*",
+    "asset_patterns": ["*.exe", "snake_game", "*.zip", "*.tar.gz"],
+    "changelog": {
+      "enabled": true,
+      "template": "RELEASE_TEMPLATE.md",
+      "include_commits": true,
+      "group_by_type": true
+    }
+  },
+  "security": {
+    "token_rotation_days": 90,
+    "audit_log_enabled": true,
+    "dependency_scanning": true,
+    "code_signing": false,
+    "secrets_management": "github_secrets"
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "output": "file",
+    "file_path": "./logs",
+    "max_size_mb": 100,
+    "max_files": 10
+  },
+  "alerts": {
+    "build_timeout_minutes": 30,
+    "consecutive_failures": 3,
+    "resource_thresholds": {
+      "cpu_percent": 80,
+      "memory_percent": 80,
+      "disk_percent": 85
+    },
+    "response_time_seconds": 300
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention_days": 7,
+    "include": ["src", "scripts", "docs", "config"],
+    "exclude": ["node_modules", "build", "*.log"]
+  },
+  "integration": {
+    "code_quality": {
+      "enabled": true,
+      "tools": ["clang-tidy", "cppcheck", "sonarqube"]
+    },
+    "testing": {
+      "enabled": true,
+      "types": ["unit", "integration", "functional"],
+      "coverage_threshold": 80
+    },
+    "deployment": {
+      "enabled": false,
+      "targets": ["github_releases", "docker_hub", "package_registries"]
+    }
+  },
+  "performance": {
+    "cache_strategy": "optimized",
+    "parallel_builds": true,
+    "resource_limits": {
+      "cpus": 2,
+      "memory_gb": 4,
+      "timeout_minutes": 60
+    },
+    "optimizations": {
+      "incremental_builds": true,
+      "dependency_caching": true,
+      "artifact_reuse": true
+    }
+  },
+  "metrics": {
+    "enabled": true,
+    "collectors": ["build_duration", "success_rate", "resource_usage", "test_coverage"],
+    "dashboard_url": "",
+    "retention_days": 365
+  },
+  "maintenance": {
+    "cleanup_schedule": "0 3 * * 0",
+    "log_cleanup": true,
+    "artifact_cleanup": true,
+    "cache_cleanup": true
+  }
+}
