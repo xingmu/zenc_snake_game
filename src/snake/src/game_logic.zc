@@ -1,0 +1,304 @@
+// game_logic.zc - 纯Zen-C游戏逻辑模块
+// 所有平台共用相同的游戏逻辑代码
+
+import std.math;
+import std.time;
+
+// ==================== 游戏常量 ====================
+
+const GRID_WIDTH: i32 = 30;
+const GRID_HEIGHT: i32 = 20;
+const CELL_SIZE: i32 = 20;
+const MAX_SNAKE_LENGTH: i32 = 100;
+const INITIAL_SNAKE_LENGTH: i32 = 3;
+const INITIAL_GAME_SPEED: u32 = 150; // ms
+
+// ==================== 数据结构 ====================
+
+// 方向枚举
+enum Direction {
+    DirUp,
+    DirDown,
+    DirLeft,
+    DirRight
+}
+
+// 位置结构
+struct Position {
+    x: i32,
+    y: i32
+}
+
+// 蛇结构
+struct Snake {
+    body: [MAX_SNAKE_LENGTH]Position,
+    length: i32,
+    direction: Direction,
+    next_direction: Direction
+}
+
+// 游戏状态
+struct GameState {
+    snake: Snake,
+    food: Position,
+    score: i32,
+    game_over: bool,
+    paused: bool,
+    level: i32,
+    speed: u32,
+    window_width: i32,
+    window_height: i32
+}
+
+// ==================== 游戏逻辑函数 ====================
+
+// 初始化游戏
+fn init_game(game: &mut GameState) {
+    // 初始化随机数种子
+    let seed = time.now().nanos();
+    math.srand(seed);
+    
+    // 初始化蛇
+    game.snake.length = INITIAL_SNAKE_LENGTH;
+    game.snake.direction = Direction::DirRight;
+    game.snake.next_direction = Direction::DirRight;
+    
+    // 蛇的初始位置（水平线）
+    for i in 0..game.snake.length {
+        game.snake.body[i] = Position {
+            x: 5 + i,
+            y: GRID_HEIGHT / 2
+        };
+    }
+    
+    // 生成食物
+    generate_food(game);
+    
+    // 初始化游戏状态
+    game.score = 0;
+    game.game_over = false;
+    game.paused = false;
+    game.level = 1;
+    game.speed = INITIAL_GAME_SPEED;
+}
+
+// 生成食物
+fn generate_food(game: &mut GameState) {
+    let mut valid_position = false;
+    let mut attempts = 0;
+    const MAX_ATTEMPTS: i32 = 100;
+    
+    while !valid_position && attempts < MAX_ATTEMPTS {
+        game.food = Position {
+            x: math.rand() % GRID_WIDTH,
+            y: math.rand() % GRID_HEIGHT
+        };
+        
+        // 检查食物是否与蛇身重叠
+        valid_position = true;
+        for i in 0..game.snake.length {
+            if game.snake.body[i].x == game.food.x &&
+               game.snake.body[i].y == game.food.y {
+                valid_position = false;
+                break;
+            }
+        }
+        
+        attempts += 1;
+    }
+}
+
+// 处理输入
+fn handle_input(game: &mut GameState, key: i32) -> bool {
+    match key {
+        // 上方向
+        38 | 87 | 119 => { // 上箭头、W、w
+            if game.snake.direction != Direction::DirDown {
+                game.snake.next_direction = Direction::DirUp;
+            }
+        },
+        
+        // 下方向
+        40 | 83 | 115 => { // 下箭头、S、s
+            if game.snake.direction != Direction::DirUp {
+                game.snake.next_direction = Direction::DirDown;
+            }
+        },
+        
+        // 左方向
+        37 | 65 | 97 => { // 左箭头、A、a
+            if game.snake.direction != Direction::DirRight {
+                game.snake.next_direction = Direction::DirLeft;
+            }
+        },
+        
+        // 右方向
+        39 | 68 | 100 => { // 右箭头、D、d
+            if game.snake.direction != Direction::DirLeft {
+                game.snake.next_direction = Direction::DirRight;
+            }
+        },
+        
+        // 空格键 - 暂停/继续
+        32 => { // 空格
+            game.paused = !game.paused;
+        },
+        
+        // R键 - 重新开始
+        82 | 114 => { // R、r
+            if game.game_over {
+                init_game(game);
+                return true; // 需要重绘
+            }
+        },
+        
+        // P键 - 暂停/继续（备用）
+        80 | 112 => { // P、p
+            game.paused = !game.paused;
+        },
+        
+        // ESC键 - 退出游戏
+        27 => { // ESC
+            return false; // 退出游戏
+        },
+        
+        _ => {} // 其他按键忽略
+    }
+    
+    return true; // 继续游戏
+}
+
+// 更新游戏状态
+fn update_game(game: &mut GameState) -> bool {
+    if game.game_over || game.paused {
+        return true;
+    }
+    
+    // 应用方向变化
+    game.snake.direction = game.snake.next_direction;
+    
+    // 移动蛇
+    let mut new_head = game.snake.body[0];
+    
+    match game.snake.direction {
+        Direction::DirUp => new_head.y -= 1,
+        Direction::DirDown => new_head.y += 1,
+        Direction::DirLeft => new_head.x -= 1,
+        Direction::DirRight => new_head.x += 1,
+    }
+    
+    // 检查边界碰撞
+    if new_head.x < 0 || new_head.x >= GRID_WIDTH ||
+       new_head.y < 0 || new_head.y >= GRID_HEIGHT {
+        game.game_over = true;
+        return true;
+    }
+    
+    // 检查自身碰撞
+    for i in 0..game.snake.length {
+        if game.snake.body[i].x == new_head.x &&
+           game.snake.body[i].y == new_head.y {
+            game.game_over = true;
+            return true;
+        }
+    }
+    
+    // 移动蛇身
+    for i in (1..game.snake.length).rev() {
+        game.snake.body[i] = game.snake.body[i - 1];
+    }
+    game.snake.body[0] = new_head;
+    
+    // 检查是否吃到食物
+    if new_head.x == game.food.x && new_head.y == game.food.y {
+        // 增加蛇长
+        if game.snake.length < MAX_SNAKE_LENGTH {
+            game.snake.length += 1;
+            // 新蛇节的位置与最后一个蛇节相同
+            game.snake.body[game.snake.length - 1] = game.snake.body[game.snake.length - 2];
+        }
+        
+        // 生成新食物
+        generate_food(game);
+        
+        // 增加分数
+        game.score += 10;
+        
+        // 每100分升一级，加快速度
+        if game.score % 100 == 0 {
+            game.level += 1;
+            game.speed = if game.speed > 50 { game.speed - 20 } else { 50 };
+        }
+        
+        return true; // 需要重绘
+    }
+    
+    return false; // 不需要重绘
+}
+
+// 获取蛇头位置
+fn get_snake_head(game: &GameState) -> Position {
+    game.snake.body[0]
+}
+
+// 获取蛇身位置
+fn get_snake_body(game: &GameState, index: i32) -> Position {
+    if index >= 0 && index < game.snake.length {
+        game.snake.body[index]
+    } else {
+        Position { x: -1, y: -1 }
+    }
+}
+
+// 获取食物位置
+fn get_food_position(game: &GameState) -> Position {
+    game.food
+}
+
+// 计算游戏区域在窗口中的位置
+fn calculate_game_area(game: &GameState, offset_x: &mut i32, offset_y: &mut i32) {
+    let game_width = GRID_WIDTH * CELL_SIZE;
+    let game_height = GRID_HEIGHT * CELL_SIZE;
+    
+    *offset_x = (game.window_width - game_width) / 2;
+    *offset_y = (game.window_height - game_height) / 3; // 留出UI空间
+    
+    if *offset_x < 50 { *offset_x = 50; }
+    if *offset_y < 50 { *offset_y = 50; }
+}
+
+// 检查点是否在蛇身上
+fn is_point_on_snake(game: &GameState, x: i32, y: i32) -> bool {
+    for i in 0..game.snake.length {
+        if game.snake.body[i].x == x && game.snake.body[i].y == y {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 检查点是否在食物上
+fn is_point_on_food(game: &GameState, x: i32, y: i32) -> bool {
+    game.food.x == x && game.food.y == y
+}
+
+// 获取游戏状态文本
+fn get_game_status_text(game: &GameState) -> string {
+    if game.game_over {
+        return "游戏结束! 按 R 键重新开始";
+    } else if game.paused {
+        return "游戏暂停 - 按空格键继续";
+    } else {
+        return "游戏中...";
+    }
+}
+
+// 获取控制说明文本
+fn get_controls_text() -> string {
+    "控制: W/A/S/D 移动, 空格键 暂停/继续, R 重新开始, ESC 退出"
+}
+
+// 获取分数文本
+fn get_score_text(game: &GameState) -> string {
+    format("分数: {}  等级: {}  长度: {}", game.score, game.level, game.snake.length)
+}

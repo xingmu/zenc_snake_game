@@ -1,0 +1,340 @@
+// main_window.zc - Zen-C窗体版本主程序
+// 所有平台使用同一份Zen-C代码，通过条件编译处理平台差异
+
+import std.io;
+import std.string;
+import std.ffi;
+
+// 导入游戏逻辑和平台API
+import "game_logic.zc";
+import "platform_api.zc";
+
+// ==================== 全局变量 ====================
+
+static mut game: GameState;
+static mut window: WindowHandle;
+static mut running: bool = true;
+
+// ==================== 颜色定义 ====================
+
+// 游戏颜色
+const SNAKE_HEAD_COLOR = rgb(46, 204, 113);   // 绿色
+const SNAKE_BODY_COLOR = rgb(39, 174, 96);    // 深绿色
+const FOOD_COLOR = rgb(231, 76, 60);          // 红色
+const BACKGROUND_COLOR = rgb(52, 73, 94);     // 深蓝色
+const GRID_COLOR = rgb(44, 62, 80);           // 网格颜色
+const TEXT_COLOR = rgb(236, 240, 241);        // 浅灰色
+const UI_BACKGROUND = rgb(41, 128, 185);      // UI背景蓝色
+
+// ==================== 绘图函数 ====================
+
+// 绘制网格
+fn draw_grid(ctx: GraphicsContext, offset_x: i32, offset_y: i32) {
+    // 绘制网格背景
+    draw_rect(ctx, offset_x, offset_y, 
+              GRID_WIDTH * CELL_SIZE, GRID_HEIGHT * CELL_SIZE, 
+              BACKGROUND_COLOR);
+    
+    // 绘制网格线（简化版本）
+    // 实际实现中可以根据平台使用更复杂的网格绘制
+    let grid_color = GRID_COLOR;
+    
+    // 绘制垂直线
+    for x in 0..=GRID_WIDTH {
+        let line_x = offset_x + x * CELL_SIZE;
+        draw_rect(ctx, line_x, offset_y, 1, GRID_HEIGHT * CELL_SIZE, grid_color);
+    }
+    
+    // 绘制水平线
+    for y in 0..=GRID_HEIGHT {
+        let line_y = offset_y + y * CELL_SIZE;
+        draw_rect(ctx, offset_x, line_y, GRID_WIDTH * CELL_SIZE, 1, grid_color);
+    }
+}
+
+// 绘制蛇
+fn draw_snake(ctx: GraphicsContext, offset_x: i32, offset_y: i32) {
+    // 绘制蛇身
+    for i in 1..game.snake.length {
+        let pos = get_snake_body(&game, i);
+        let x = offset_x + pos.x * CELL_SIZE;
+        let y = offset_y + pos.y * CELL_SIZE;
+        draw_rect(ctx, x, y, CELL_SIZE, CELL_SIZE, SNAKE_BODY_COLOR);
+    }
+    
+    // 绘制蛇头
+    let head = get_snake_head(&game);
+    let head_x = offset_x + head.x * CELL_SIZE;
+    let head_y = offset_y + head.y * CELL_SIZE;
+    draw_rect(ctx, head_x, head_y, CELL_SIZE, CELL_SIZE, SNAKE_HEAD_COLOR);
+    
+    // 绘制蛇眼睛（装饰）
+    let eye_size = CELL_SIZE / 4;
+    let eye_offset = CELL_SIZE / 3;
+    
+    // 根据方向确定眼睛位置
+    match game.snake.direction {
+        Direction::DirRight => {
+            // 眼睛在右侧
+            draw_rect(ctx, head_x + CELL_SIZE - eye_offset, head_y + eye_offset, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+            draw_rect(ctx, head_x + CELL_SIZE - eye_offset, 
+                     head_y + CELL_SIZE - eye_offset - eye_size, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+        },
+        Direction::DirLeft => {
+            // 眼睛在左侧
+            draw_rect(ctx, head_x + eye_offset - eye_size, head_y + eye_offset, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+            draw_rect(ctx, head_x + eye_offset - eye_size, 
+                     head_y + CELL_SIZE - eye_offset - eye_size, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+        },
+        Direction::DirUp => {
+            // 眼睛在上侧
+            draw_rect(ctx, head_x + eye_offset, head_y + eye_offset - eye_size, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+            draw_rect(ctx, head_x + CELL_SIZE - eye_offset - eye_size, 
+                     head_y + eye_offset - eye_size, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+        },
+        Direction::DirDown => {
+            // 眼睛在下侧
+            draw_rect(ctx, head_x + eye_offset, head_y + CELL_SIZE - eye_offset, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+            draw_rect(ctx, head_x + CELL_SIZE - eye_offset - eye_size, 
+                     head_y + CELL_SIZE - eye_offset, 
+                     eye_size, eye_size, rgb(255, 255, 255));
+        },
+    }
+}
+
+// 绘制食物
+fn draw_food(ctx: GraphicsContext, offset_x: i32, offset_y: i32) {
+    let food = get_food_position(&game);
+    let food_x = offset_x + food.x * CELL_SIZE;
+    let food_y = offset_y + food.y * CELL_SIZE;
+    
+    // 绘制圆形食物
+    draw_circle(ctx, food_x + CELL_SIZE / 2, food_y + CELL_SIZE / 2, 
+               CELL_SIZE / 2 - 2, FOOD_COLOR);
+    
+    // 食物高光效果
+    let highlight_size = CELL_SIZE / 4;
+    draw_circle(ctx, food_x + highlight_size, food_y + highlight_size, 
+               highlight_size / 2, rgb(255, 255, 255));
+}
+
+// 绘制UI面板
+fn draw_ui_panel(ctx: GraphicsContext, panel_x: i32, panel_y: i32, 
+                 panel_width: i32, panel_height: i32) {
+    // 绘制面板背景
+    draw_rect(ctx, panel_x, panel_y, panel_width, panel_height, UI_BACKGROUND);
+    
+    // 绘制面板边框
+    let border_color = rgb(255, 255, 255);
+    // 上边框
+    draw_rect(ctx, panel_x, panel_y, panel_width, 2, border_color);
+    // 下边框
+    draw_rect(ctx, panel_x, panel_y + panel_height - 2, panel_width, 2, border_color);
+    // 左边框
+    draw_rect(ctx, panel_x, panel_y, 2, panel_height, border_color);
+    // 右边框
+    draw_rect(ctx, panel_x + panel_width - 2, panel_y, 2, panel_height, border_color);
+}
+
+// 绘制游戏界面
+fn draw_game_ui(ctx: GraphicsContext, window_width: i32, window_height: i32) {
+    // 计算游戏区域位置
+    let mut game_offset_x: i32 = 0;
+    let mut game_offset_y: i32 = 0;
+    calculate_game_area(&game, &mut game_offset_x, &mut game_offset_y);
+    
+    // 更新窗口尺寸
+    game.window_width = window_width;
+    game.window_height = window_height;
+    
+    // 绘制游戏区域
+    draw_grid(ctx, game_offset_x, game_offset_y);
+    draw_snake(ctx, game_offset_x, game_offset_y);
+    draw_food(ctx, game_offset_x, game_offset_y);
+    
+    // 计算UI面板位置
+    let game_width = GRID_WIDTH * CELL_SIZE;
+    let game_height = GRID_HEIGHT * CELL_SIZE;
+    let panel_x = game_offset_x;
+    let panel_y = game_offset_y + game_height + 20;
+    let panel_width = game_width;
+    let panel_height = 150;
+    
+    // 绘制UI面板
+    draw_ui_panel(ctx, panel_x, panel_y, panel_width, panel_height);
+    
+    // 绘制游戏信息（在实际实现中，这里需要平台特定的文本绘制）
+    // 简化版本：在控制台输出信息
+    io.println("========================================");
+    io.println(get_score_text(&game));
+    io.println(get_game_status_text(&game));
+    io.println(get_controls_text());
+    io.println("========================================");
+}
+
+// ==================== 窗口事件处理 ====================
+
+// 处理窗口绘制事件
+fn on_paint_event(ctx: GraphicsContext, window_width: i32, window_height: i32) {
+    // 绘制窗口背景
+    draw_rect(ctx, 0, 0, window_width, window_height, rgb(30, 30, 30));
+    
+    // 绘制游戏界面
+    draw_game_ui(ctx, window_width, window_height);
+}
+
+// 处理键盘事件
+fn on_key_event(key_code: i32) -> bool {
+    return handle_input(&mut game, key_code);
+}
+
+// 处理定时器事件
+fn on_timer_event() -> bool {
+    let needs_redraw = update_game(&mut game);
+    return needs_redraw;
+}
+
+// ==================== 平台特定窗口过程 ====================
+
+#if IS_WINDOWS
+
+// Windows窗口过程
+extern fn WindowProc(hwnd: WindowHandle, uMsg: u32, wParam: u32, lParam: u32) -> i32 {
+    match uMsg {
+        WM_PAINT => {
+            let mut ps: [64]u8 = [0; 64];
+            let hdc = BeginPaint(hwnd, &ps);
+            
+            let mut rect: [4]i32 = [0; 4];
+            GetClientRect(hwnd, &rect);
+            let width = rect[2] - rect[0];
+            let height = rect[3] - rect[1];
+            
+            on_paint_event(hdc, width, height);
+            
+            EndPaint(hwnd, &ps);
+            return 0;
+        },
+        
+        WM_KEYDOWN => {
+            let continue_game = on_key_event(wParam as i32);
+            if !continue_game {
+                running = false;
+                PostQuitMessage(0);
+            } else {
+                InvalidateRect(hwnd, null, true);
+            }
+            return 0;
+        },
+        
+        WM_TIMER => {
+            let needs_redraw = on_timer_event();
+            if needs_redraw {
+                InvalidateRect(hwnd, null, true);
+            }
+            return 0;
+        },
+        
+        WM_DESTROY => {
+            running = false;
+            PostQuitMessage(0);
+            return 0;
+        },
+        
+        _ => {
+            return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+        }
+    }
+}
+
+// 需要声明DefWindowProcA
+extern "user32.dll" fn DefWindowProcA(hWnd: WindowHandle, uMsg: u32, wParam: u32, lParam: u32) -> i32;
+
+#elif IS_LINUX || IS_MACOS
+
+// Linux/macOS事件处理（简化版本）
+// 实际实现需要平台特定的事件处理
+
+#endif
+
+// ==================== 主函数 ====================
+
+fn main() -> i32 {
+    io.println("========================================");
+    io.println("Zen-C 贪吃蛇游戏 - 窗体版本");
+    io.println("========================================");
+    io.println("平台: {}", 
+        #if IS_WINDOWS
+            "Windows"
+        #elif IS_LINUX
+            "Linux"
+        #elif IS_MACOS
+            "macOS"
+        #else
+            "未知"
+        #endif
+    );
+    io.println("特性: 所有平台使用同一份Zen-C源代码");
+    io.println("========================================");
+    
+    // 初始化游戏
+    game = GameState {
+        snake: Snake {
+            body: [Position { x: 0, y: 0 }; MAX_SNAKE_LENGTH],
+            length: 0,
+            direction: Direction::DirRight,
+            next_direction: Direction::DirRight
+        },
+        food: Position { x: 0, y: 0 },
+        score: 0,
+        game_over: false,
+        paused: false,
+        level: 1,
+        speed: INITIAL_GAME_SPEED,
+        window_width: 800,
+        window_height: 600
+    };
+    
+    init_game(&mut game);
+    
+    // 创建窗口
+    let window_title = "Zen-C Snake Game - 跨平台窗体版本";
+    window = create_window(window_title, 800, 600);
+    
+    if window == null {
+        io.println("错误: 无法创建窗口");
+        return 1;
+    }
+    
+    // 显示窗口
+    show_window(window);
+    
+    // 设置游戏定时器
+    set_game_timer(window, game.speed);
+    
+    io.println("窗口创建成功!");
+    io.println("游戏已初始化，分数: {}", game.score);
+    io.println("使用 W/A/S/D 控制蛇的移动");
+    io.println("按 ESC 退出游戏");
+    io.println("========================================");
+    
+    // 运行事件循环
+    run_event_loop(window);
+    
+    io.println("游戏结束!");
+    io.println("最终分数: {}", game.score);
+    io.println("谢谢游玩 Zen-C 贪吃蛇游戏!");
+    io.println("========================================");
+    
+    // 退出应用程序
+    quit_application();
+    
+    0
+}

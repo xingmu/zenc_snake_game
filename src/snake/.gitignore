@@ -1,0 +1,76 @@
+# Zen-C Snake Game - Git忽略文件
+
+## 敏感文件
+.github_token
+config.json
+security_issues_*.txt
+security_report_*.txt
+user_feedback_*.log
+project_management.log
+backup.log
+
+## 构建输出
+build/
+*.exe
+*.o
+*.obj
+*.out
+*.so
+*.dylib
+*.dll
+
+## 开发环境
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+## 系统文件
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+## 文档生成
+_site/
+.sass-cache/
+.jekyll-cache/
+
+## 备份文件
+*.bak
+*.backup
+*.old
+
+## 日志文件
+*.log
+logs/
+
+## 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+
+## 包管理
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+## 虚拟环境
+venv/
+env/
+.venv/
+
+## 编辑器
+*.sublime-*
+*.code-workspace
+
+## 操作系统
+*.orig
+*.rej
