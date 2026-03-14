@@ -47,7 +47,7 @@ if not exist build mkdir build
 REM 编译Zen-C代码
 echo.
 echo 正在编译Zen-C代码...
-zc build -o build\snake_game.exe src\main.zc
+zc build -o build\snake_game.exe src\main_window.zc
 
 if %errorlevel% equ 0 (
     echo 编译成功!

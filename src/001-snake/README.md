@@ -49,9 +49,12 @@ snake_game.exe
 ```
 001-snake/
 ├── src/                    # 源代码目录
-│   └── main.zc            # Zen-C 主游戏程序
+│   ├── main_window.zc     # 主入口（窗口、事件处理）
+│   ├── game_logic.zc      # 游戏逻辑模块
+│   └── platform_api.zc    # 平台API封装
 ├── build/                 # 构建输出目录
 ├── build_windows.bat     # Windows 构建脚本
+├── Makefile              # 构建配置
 ├── README.md             # 项目说明
 ├── SECURITY.md           # 安全策略
 ├── LICENSE               # MIT 许可证
