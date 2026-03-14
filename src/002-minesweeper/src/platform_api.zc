@@ -1,0 +1,255 @@
+// platform_api.zc - Windows Platform API Abstraction Layer
+// Zen-C Implementation for Win32 GUI
+
+import std.c.stdlib;
+import std.c.string;
+
+// ============================================================================
+// Win32 API Constants
+// ============================================================================
+
+// Window Styles
+const WS_OVERLAPPED: u32 = 0x00000000;
+const WS_CAPTION: u32 = 0x00C00000;
+const WS_SYSMENU: u32 = 0x00080000;
+const WS_THICKFRAME: u32 = 0x00040000;
+const WS_MINIMIZEBOX: u32 = 0x00020000;
+const WS_MAXIMIZEBOX: u32 = 0x00010000;
+const WS_VISIBLE: u32 = 0x10000000;
+const WS_CHILD: u32 = 0x40000000;
+const WS_CLIPSIBLINGS: u32 = 0x04000000;
+const WS_CLIPCHILDREN: u32 = 0x02000000;
+
+// Message Box Styles
+const MB_OK: u32 = 0x00000000;
+const MB_YESNO: u32 = 0x00000004;
+const MB_ICONQUESTION: u32 = 0x00000020;
+const MB_ICONINFORMATION: u32 = 0x00000040;
+const MB_ICONWARNING: u32 = 0x00000030;
+const MB_ICONERROR: u32 = 0x00000010;
+
+// Virtual Key Codes
+const VK_LBUTTON: u8 = 0x01;
+const VK_RBUTTON: u8 = 0x02;
+const VK_MBUTTON: u8 = 0x04;
+const VK_F1: u8 = 0x70;
+const VK_F2: u8 = 0x71;
+const VK_F3: u8 = 0x72;
+
+// Timer IDs
+const TIMER_ID: u32 = 1;
+const TIMER_ELAPSE: u32 = 1000;
+
+// Window Messages
+const WM_CREATE: u32 = 0x0001;
+const WM_DESTROY: u32 = 0x0002;
+const WM_PAINT: u32 = 0x000F;
+const WM_MOUSEMOVE: u32 = 0x0200;
+const WM_LBUTTONDOWN: u32 = 0x0201;
+const WM_LBUTTONUP: u32 = 0x0202;
+const WM_RBUTTONDOWN: u32 = 0x0204;
+const WM_RBUTTONUP: u32 = 0x0205;
+const WM_COMMAND: u32 = 0x0111;
+const WM_TIMER: u32 = 0x0113;
+const WM_KEYDOWN: u32 = 0x0100;
+
+// Show Window Commands
+const SW_SHOW: i32 = 5;
+const SW_HIDE: i32 = 0;
+
+// Colors
+const COLOR_WINDOW: u32 = 5;
+
+// ============================================================================
+// Win32 API Types
+// ============================================================================
+
+// Handle types
+struct HWND__ { _private: i32 }
+struct HINSTANCE__ { _private: i32 }
+struct HICON__ { _private: i32 }
+struct HCURSOR__ { _private: i32 }
+struct HBRUSH__ { _private: i32 }
+struct HMENU__ { _private: i32 }
+
+type HWND = *mut HWND__;
+type HINSTANCE = *mut HINSTANCE__;
+type HICON = *mut HICON__;
+type HCURSOR = *mut HCURSOR__;
+type HBRUSH = *mut HBRUSH__;
+type HMENU = *mut HMENU__;
+
+// WNDCLASSA structure
+struct WNDCLASSA {
+    style: u32,
+    lpfnWndProc: fn(HWND, u32, i32, i32) -> i32,
+    cbClsExtra: i32,
+    cbWndExtra: i32,
+    hInstance: HINSTANCE,
+    hIcon: HICON,
+    hCursor: HCURSOR,
+    hbrBackground: HBRUSH,
+    lpszMenuName: &i8,
+    lpszClassName: &i8
+}
+
+// MSG structure
+struct MSG {
+    hwnd: HWND,
+    message: u32,
+    wParam: i32,
+    lParam: i32,
+    time: u32,
+    pt: POINT
+}
+
+// POINT structure
+struct POINT {
+    x: i32,
+    y: i32
+}
+
+// RECT structure
+struct RECT {
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32
+}
+
+// PAINTSTRUCT (simplified)
+struct PAINTSTRUCT {
+    hdc: i32,
+    fErase: i32,
+    rcPaint_left: i32,
+    rcPaint_top: i32,
+    rcPaint_right: i32,
+    rcPaint_bottom: i32,
+    fRestore: i32,
+    fIncUpdate: i32,
+    rgbReserved: [u8; 32]
+}
+
+// ============================================================================
+// Win32 API Function Declarations
+// ============================================================================
+
+// Window Management
+fn RegisterClassA(cls: &WNDCLASSA) -> u16;
+fn CreateWindowExA(dwExStyle: u32, lpClassName: &i8, lpWindowName: &i8, 
+                   dwStyle: u32, X: i32, Y: i32, nWidth: i32, nHeight: i32,
+                   hWndParent: HWND, hMenu: HMENU, 
+                   hInstance: HINSTANCE, lpParam: *mut HWND__) -> HWND;
+fn ShowWindow(hWnd: HWND, nCmdShow: i32) -> i32;
+fn UpdateWindow(hWnd: HWND) -> i32;
+fn DefWindowProcA(hWnd: HWND, Msg: u32, wParam: i32, lParam: i32) -> i32;
+fn PostQuitMessage(exitCode: i32);
+fn GetMessageA(msg: &mut MSG, hWnd: HWND, wMsgFilterMin: u32, wMsgFilterMax: u32) -> i32;
+fn TranslateMessage(msg: &const MSG) -> i32;
+fn DispatchMessageA(msg: &const MSG) -> i32;
+fn SetWindowTextA(hWnd: HWND, lpString: &i8) -> i32;
+fn GetClientRect(hWnd: HWND, lpRect: &mut RECT) -> i32;
+fn GetWindowRect(hWnd: HWND, lpRect: &mut RECT) -> i32;
+fn MoveWindow(hWnd: HWND, X: i32, Y: i32, nWidth: i32, nHeight: i32, bRepaint: i32) -> i32;
+fn DestroyWindow(hWnd: HWND) -> i32;
+
+// GDI Functions
+fn LoadCursorA(hInstance: HINSTANCE, lpCursorName: &i8) -> HCURSOR;
+fn LoadIconA(hInstance: HINSTANCE, lpIconName: &i8) -> HICON;
+fn GetStockObject(obj: i32) -> i32;
+fn CreateSolidBrush(color: u32) -> i32;
+fn SelectObject(hdc: i32, hgdiobj: i32) -> i32;
+fn DeleteObject(hObject: i32) -> i32;
+fn GetDC(hWnd: HWND) -> i32;
+fn ReleaseDC(hWnd: HWND, hDC: i32) -> i32;
+fn SetBkMode(hdc: i32, mode: i32) -> i32;
+fn SetTextColor(hdc: i32, color: u32) -> i32;
+fn DrawTextA(hdc: i32, lpString: &i8, nCount: i32, lpRect: &mut RECT, uFormat: u32) -> i32;
+fn FillRect(hdc: i32, lprc: &const RECT, hbr: i32) -> i32;
+fn FrameRect(hdc: i32, lprc: &const RECT, hbr: i32) -> i32;
+
+// Timer Functions
+fn SetTimer(hWnd: HWND, nIDEvent: u32, uElapse: u32, lpTimerFunc: i32) -> u32;
+fn KillTimer(hWnd: HWND, nIDEvent: u32) -> i32;
+
+// Message Box
+fn MessageBoxA(hWnd: HWND, lpText: &i8, lpCaption: &i8, uType: u32) -> i32;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// Get mouse position from lParam
+fn get_mouse_pos(lParam: i32) -> POINT {
+    POINT {
+        x: (lParam & 0xFFFF) as i32,
+        y: ((lParam >> 16) & 0xFFFF) as i32
+    }
+}
+
+// Get mouse row/col from position
+fn get_tile_from_pos(x: i32, y: i32, tile_size: i32, header_height: i32) -> Position {
+    let col = (x - 0) / tile_size;
+    let row = (y - header_height) / tile_size;
+    Position { row, col }
+}
+
+// Get pixel position from tile
+fn get_pos_from_tile(row: i32, col: i32, tile_size: i32, header_height: i32) -> POINT {
+    POINT {
+        x: col * tile_size,
+        y: row * tile_size + header_height
+    }
+}
+
+// Make RGB color
+fn rgb(r: u8, g: u8, b: u8) -> u32 {
+    (b as u32) << 16 | (g as u32) << 8 | (r as u32)
+}
+
+// Pre-defined colors
+const COLOR_BLACK: u32 = 0x000000;
+const COLOR_WHITE: u32 = 0xFFFFFF;
+const COLOR_GRAY: u32 = 0x808080;
+const COLOR_LTGRAY: u32 = 0xC0C0C0;
+const COLOR_DKGRAY: u32 = 0x404040;
+const COLOR_RED: u32 = 0x0000FF;
+const COLOR_GREEN: u32 = 0x00FF00;
+const COLOR_BLUE: u32 = 0xFF0000;
+const COLOR_YELLOW: u32 = 0x00FFFF;
+const COLOR_CYAN: u32 = 0xFFFF00;
+const COLOR_MAGENTA: u32 = 0xFF00FF;
+
+// ============================================================================
+// Platform Abstraction Layer
+// ============================================================================
+
+// Platform-specific types
+struct PlatformWindow {
+    hwnd: HWND,
+    hdc: i32,
+    width: i32,
+    height: i32
+}
+
+// Platform initialization
+struct PlatformInit {
+    hInstance: HINSTANCE,
+    nCmdShow: i32
+}
+
+// Get module handle
+fn GetModuleHandleA(lpModuleName: &i8) -> HINSTANCE;
+
+// Application entry point
+fn WinMain(hInstance: HINSTANCE, hPrevInstance: HINSTANCE, 
+           lpCmdLine: &i8, nCmdShow: i32) -> i32;
+
+// Get command line arguments
+fn GetCommandLineA() -> &i8;
+
+// Parse command line
+fn CommandLineToArgv(lpCmdLine: &i8, pNumArgs: &mut i32) -> &i8;
+
+// Free memory
+fn LocalFree(hMem: i32) -> i32;

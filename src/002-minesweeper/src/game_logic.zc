@@ -1,0 +1,238 @@
+// game_logic.zc - 扫雷游戏逻辑模块
+// Zen-C Implementation
+
+import std.math;
+import std.time;
+
+// Constants
+const EASY_ROWS: i32 = 9;
+const EASY_COLS: i32 = 9;
+const EASY_MINES: i32 = 10;
+
+const MEDIUM_ROWS: i32 = 16;
+const MEDIUM_COLS: i32 = 16;
+const MEDIUM_MINES: i32 = 40;
+
+const HARD_ROWS: i32 = 16;
+const HARD_COLS: i32 = 30;
+const HARD_MINES: i32 = 99;
+
+const TILE_SIZE: i32 = 16;
+const HEADER_HEIGHT: i32 = 40;
+
+// Game Status
+enum GameStatus {
+    Ready,
+    Playing,
+    Won,
+    Lost
+}
+
+// Difficulty
+enum Difficulty {
+    Easy,
+    Medium,
+    Hard
+}
+
+// Tile State
+enum TileState {
+    Hidden,
+    Revealed,
+    Flagged,
+    Question
+}
+
+// Tile
+struct Tile {
+    is_mine: bool,
+    state: TileState,
+    adjacent_mines: i32
+}
+
+// Position
+struct Position {
+    row: i32,
+    col: i32
+}
+
+// Game Config
+struct GameConfig {
+    difficulty: Difficulty,
+    rows: i32,
+    cols: i32,
+    mines: i32
+}
+
+// Game State
+struct GameState {
+    board: [][]Tile,
+    config: GameConfig,
+    status: GameStatus,
+    mine_count: i32,
+    elapsed_time: i32,
+    first_click: bool,
+    started: bool,
+    face_state: i32,
+    window_width: i32,
+    window_height: i32
+}
+
+// Get difficulty config
+fn get_difficulty_config(diff: Difficulty) -> GameConfig {
+    match diff {
+        Difficulty::Easy => GameConfig {
+            difficulty: Difficulty::Easy,
+            rows: EASY_ROWS,
+            cols: EASY_COLS,
+            mines: EASY_MINES
+        },
+        Difficulty::Medium => GameConfig {
+            difficulty: Difficulty::Medium,
+            rows: MEDIUM_ROWS,
+            cols: MEDIUM_COLS,
+            mines: MEDIUM_MINES
+        },
+        Difficulty::Hard => GameConfig {
+            difficulty: Difficulty::Hard,
+            rows: HARD_ROWS,
+            cols: HARD_COLS,
+            mines: HARD_MINES
+        }
+    }
+}
+
+// Initialize game
+fn init_game(game: &mut GameState, difficulty: Difficulty) {
+    game.config = get_difficulty_config(difficulty);
+    let seed = time.now().nanos();
+    math.srand(seed);
+    
+    game.board = [][]Tile::new(game.config.rows);
+    for r in 0..game.config.rows {
+        game.board[r] = []Tile::new(game.config.cols);
+        for c in 0..game.config.cols {
+            game.board[r][c] = Tile {
+                is_mine: false,
+                state: TileState::Hidden,
+                adjacent_mines: 0
+            };
+        }
+    }
+    
+    game.status = GameStatus::Ready;
+    game.mine_count = game.config.mines;
+    game.elapsed_time = 0;
+    game.first_click = true;
+    game.started = false;
+    game.face_state = 0;
+}
+
+// Default init
+fn init_game_default(game: &mut GameState) {
+    init_game(game, Difficulty::Easy);
+}
+// Place mines after first click
+fn place_mines(game: &mut GameState, safe_row: i32, safe_col: i32) {
+    let mut mines_placed = 0;
+    let rows = game.config.rows;
+    let cols = game.config.cols;
+    let total_cells = rows * cols;
+    
+    while mines_placed < game.config.mines {
+        let random_pos = math.rand() % total_cells;
+        let r = random_pos / cols;
+        let c = random_pos % cols;
+        
+        // Skip safe position and neighbors
+        if r == safe_row && c == safe_col { continue; }
+        if r >= safe_row - 1 && r <= safe_row + 1 && 
+           c >= safe_col - 1 && c <= safe_col + 1 { continue; }
+        
+        if !game.board[r][c].is_mine {
+            game.board[r][c].is_mine = true;
+            mines_placed += 1;
+        }
+    }
+    
+    // Calculate adjacent mines
+    for r in 0..rows {
+        for c in 0..cols {
+            if !game.board[r][c].is_mine {
+                let mut count = 0;
+                for dr in -1..=1 {
+                    for dc in -1..=1 {
+                        if dr == 0 && dc == 0 { continue; }
+                        let nr = r + dr;
+                        let nc = c + dc;
+                        if nr >= 0 && nr < rows && nc >= 0 && nc < cols {
+                            if game.board[nr][nc].is_mine { count += 1; }
+                        }
+                    }
+                }
+                game.board[r][c].adjacent_mines = count;
+            }
+        }
+    }
+}
+
+// Check if position is valid
+fn is_valid_position(game: &GameState, row: i32, col: i32) -> bool {
+    row >= 0 && row < game.config.rows && col >= 0 && col < game.config.cols
+}
+
+// Reveal a single tile
+fn reveal_tile(game: &mut GameState, row: i32, col: i32) -> bool {
+    if !is_valid_position(game, row, col) { return false; }
+    
+    let tile = &mut game.board[row][col];
+    if tile.state == TileState::Hidden {
+        tile.state = TileState::Revealed;
+        
+        if tile.is_mine {
+            game.status = GameStatus::Lost;
+            game.face_state = 3; // Dead face
+            return true;
+        }
+        
+        // Auto reveal empty tiles
+        if tile.adjacent_mines == 0 {
+            auto_reveal(game, row, col);
+        }
+    }
+    return false;
+}
+
+// Auto reveal empty tiles (flood fill)
+fn auto_reveal(game: &mut GameState, row: i32, col: i32) {
+    for dr in -1..=1 {
+        for dc in -1..=1 {
+            if dr == 0 && dc == 0 { continue; }
+            let nr = row + dr;
+            let nc = col + dc;
+            if is_valid_position(game, nr, nc) {
+                let tile = &game.board[nr][nc];
+                if tile.state == TileState::Hidden && !tile.is_mine {
+                    game.board[nr][nc].state = TileState::Revealed;
+                    if tile.adjacent_mines == 0 {
+                        auto_reveal(game, nr, nc);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Toggle flag on a tile
+fn toggle_flag(game: &mut GameState, row: i32, col: i32) {
+    if !is_valid_position(game, row, col) { return; }
+    
+    let tile = &mut game.board[row][col];
+    if tile.state == TileState::Hidden {
+        tile.state = TileState::Flagged;
+        game.mine_count -= 1;
+    } else if tile.state == TileState::Flagged {
+        tile.state = TileState::Hidden;
+        game.mine_count += 1;
+    }
+}
